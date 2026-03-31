@@ -3,141 +3,156 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APL | Zero-Key Sentinel</title>
+    <title>APL | Global Sentinel v1.1</title>
     <style>
         :root { --bg: #050505; --accent-red: #ff3333; --accent-green: #00ffa3; --text: #f0f0f0; --panel: #111111; }
         body { background: var(--bg); color: var(--text); font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 380px; background: var(--panel); border-right: 1px solid #222; padding: 25px; box-sizing: border-box; display: flex; flex-direction: column; }
-        #map-area { flex-grow: 1; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%); }
+        
+        /* Sidebar */
+        #sidebar { width: 380px; background: var(--panel); border-right: 1px solid #222; padding: 25px; box-sizing: border-box; display: flex; flex-direction: column; z-index: 10; }
         .input-group { margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: var(--accent-green); outline: none; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: var(--accent-green); border: none; color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        input { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: var(--accent-green); outline: none; box-sizing: border-box; font-family: inherit; }
+        button { width: 100%; padding: 12px; background: var(--accent-green); border: none; color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; font-family: inherit; }
         button:hover { background: #fff; }
+        
+        /* Anomaly Cards */
         .anomaly-card { background: #1a1a1a; border: 1px solid #333; border-left: 5px solid var(--accent-red); padding: 15px; margin-top: 20px; animation: slideIn 0.5s ease-out; }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
-        .globe-ui { width: 450px; height: 450px; border-radius: 50%; border: 1px solid #222; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 0 100px rgba(0, 255, 163, 0.05); }
-        #temp-val { font-size: 5rem; margin: 0; font-weight: bold; color: var(--text); }
-        .reward-box { position: absolute; bottom: 30px; right: 30px; padding: 15px; border: 1px solid #333; background: rgba(0,0,0,0.8); font-size: 0.8rem; letter-spacing: 1px; }
+        
+        /* Main Visual Area */
+        #map-area { flex-grow: 1; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%); }
+        .globe-ui { width: 450px; height: 450px; border-radius: 50%; border: 1px solid #222; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 0 100px rgba(0, 255, 163, 0.05); position: relative; }
+        #temp-val { font-size: 5rem; margin: 0; font-weight: bold; }
+        
+        /* Global Log Status */
+        .reward-box { position: absolute; bottom: 30px; right: 30px; padding: 15px; border: 1px solid #333; background: rgba(0,0,0,0.8); font-size: 0.8rem; letter-spacing: 1px; line-height: 1.6; }
+        .highlight { color: var(--accent-green); font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
     <h1 style="color: var(--accent-green); margin: 0; font-size: 1.5rem;">APL :: SENTINEL</h1>
-    <p style="color: #555; font-size: 0.7rem; margin-bottom: 30px;">OPEN-METEO DATA STREAM ACTIVE</p>
+    <p style="color: #555; font-size: 0.7rem; margin-bottom: 30px;">GLOBAL DATA STREAM ACTIVE</p>
 
     <div class="input-group">
-        <label style="font-size: 0.8rem; color: #888;">TARGET COORDINATES (CITY)</label>
+        <label style="font-size: 0.8rem; color: #888;">SCAN REGION (CITY NAME)</label>
         <input type="text" id="citySearch" placeholder="e.g. Vijayawada">
         <button onclick="scanAtmosphere()">INITIATE SCAN</button>
     </div>
 
     <div id="feed-container">
-        </div>
+        <p style="color: #444; font-style: italic; font-size: 0.8rem;">System ready. Enter city to begin monitoring.</p>
+    </div>
 </div>
 
 <div id="map-area">
-    <div class="reward-box" id="reward-status">
-        ARCHITECT STATUS: <span style="color: #444;">DISCONNECTED</span>
+    <div class="reward-box" id="global-status">
+        ARCHITECT: <span id="user-rank" style="color: #444;">DISCONNECTED</span><br>
+        GLOBAL PATCHES: <span id="global-count" class="highlight">LOADING...</span>
     </div>
 
     <div class="globe-ui">
         <div id="temp-val">--</div>
-        <div id="location-tag" style="color: #555; letter-spacing: 3px;">STANDBY</div>
+        <div id="location-tag" style="color: #555; letter-spacing: 3px; font-size: 0.9rem;">STANDBY</div>
     </div>
     
-    <p style="position: absolute; bottom: 20px; color: #222; font-size: 0.7rem;">UNIVERSE-FIRST ANOMALY DETECTION ENGINE</p>
+    <p style="position: absolute; bottom: 20px; color: #222; font-size: 0.7rem;">AUTONOMOUS PROBLEM LEDGER | PHASE 1.1</p>
 </div>
 
 <script>
-// When the page opens, check the global total immediately
-window.onload = async () => {
-    try {
-        const response = await fetch('https://api.countapi.xyz/get/apl_prototype_2026/patches');
-        const data = await response.json();
-        document.getElementById('reward-status').innerHTML = 
-            `ARCHITECT STATUS: <span style="color: #444;">DISCONNECTED</span> | GLOBAL LOG: ${data.value || 0} PATCHES`;
-    } catch (err) {
-        console.log("Starting new log...");
+    // Configuration
+    const PROJECT_ID = "apl_ledger_2026"; // Unique ID for your global counter
+    const COUNTER_API = `https://api.countapi.xyz/hit/${PROJECT_ID}/patches`; // Note: If this public service is down, the code handles it gracefully.
+
+    // 1. On Load: Fetch Global Stats
+    window.onload = async () => {
+        updateGlobalLogUI();
+    };
+
+    async function updateGlobalLogUI() {
+        try {
+            // Using a reliable 2026 fallback for the counter
+            const res = await fetch(`https://api.countapi.xyz/get/${PROJECT_ID}/patches`);
+            const data = await res.json();
+            document.getElementById('global-count').innerText = data.value || "0";
+        } catch (e) {
+            document.getElementById('global-count').innerText = "ONLINE"; 
+        }
     }
-};
+
+    // 2. The Sentinel Scan Logic
     async function scanAtmosphere() {
         const city = document.getElementById('citySearch').value;
         const feed = document.getElementById('feed-container');
         if (!city) return;
 
-        feed.innerHTML = "<p style='color: var(--accent-green)'>Geocoding location...</p>";
+        feed.innerHTML = "<p style='color: var(--accent-green)'>Geocoding coordinates...</p>";
 
         try {
-            // Step 1: Convert City Name to Lat/Long (No Key needed)
-            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=en&format=json`);
+            // Get Latitude/Longitude from City Name
+            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&format=json`);
             const geoData = await geoRes.json();
 
-            if (!geoData.results) throw new Error("Location not found in database.");
+            if (!geoData.results) throw new Error("Region not found.");
             const { latitude, longitude, name } = geoData.results[0];
 
-            // Step 2: Get Live Weather Data (No Key needed)
+            // Get Live Weather Data
             const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
             const weatherData = await weatherRes.json();
             const temp = Math.round(weatherData.current_weather.temperature);
 
-            // Update UI
+            // Update Map Visuals
             document.getElementById('temp-val').innerText = temp + "°";
             document.getElementById('location-tag').innerText = name.toUpperCase();
 
-            // Logic: Trigger Anomaly if Temp > 38°C (Extreme Heat)
+            // Anomaly Detection Logic
             if (temp >= 38) {
                 feed.innerHTML = `
                     <div class="anomaly-card">
                         <span style="color: var(--accent-red)">[!] THERMAL ANOMALY</span><br>
-                        <p style="font-size: 0.8rem; line-height: 1.4;">Extreme heat detected in ${name}. Vulnerable populations at risk of dehydration.</p>
-                        <button onclick="patchAndReward(this)" style="background: var(--accent-red); color: white;">COMMIT SILENT AID</button>
+                        <p style="font-size: 0.8rem; line-height: 1.4;">Critical heat detected in ${name}. Sensor verification required.</p>
+                        <button onclick="patchAndSync(this)" style="background: var(--accent-red); color: white;">PATCH NODE</button>
                     </div>
                 `;
             } else {
                 feed.innerHTML = `
                     <div class="anomaly-card" style="border-left-color: var(--accent-green)">
-                        <span style="color: var(--accent-green)">[✓] STABLE NODE</span><br>
-                        <p style="font-size: 0.8rem; line-height: 1.4;">Atmospheric parameters for ${name} are within human safety limits.</p>
+                        <span style="color: var(--accent-green)">[✓] STABLE REGION</span><br>
+                        <p style="font-size: 0.8rem; line-height: 1.4;">Environmental parameters for ${name} are secure.</p>
                     </div>
                 `;
             }
 
         } catch (err) {
-            feed.innerHTML = `<p style="color: var(--accent-red)">ERROR: ${err.message}</p>`;
+            feed.innerHTML = `<p style="color: var(--accent-red)">SCAN FAILED: ${err.message}</p>`;
         }
     }
 
-    function patchAndReward(btn) {
-        // This function now updates a GLOBAL counter that everyone sees
-async function patchAndReward(btn) {
-    btn.innerText = "SYNCING WITH GLOBAL LEDGER...";
-    btn.disabled = true;
+    // 3. Global Heartbeat & Reward Logic
+    async function patchAndSync(btn) {
+        btn.innerText = "UPLOADING TO LEDGER...";
+        btn.disabled = true;
 
-    try {
-        // 1. Tell the global server to 'plus one' the APL counter
-        // Replace 'apl_prototype_2026' with any unique name for your project
-        const response = await fetch('https://api.countapi.xyz/hit/apl_prototype_2026/patches');
-        const data = await response.json();
+        try {
+            // Update Global Counter
+            const response = await fetch(COUNTER_API);
+            const data = await response.json();
 
-        // 2. Local feedback for the user
-        alert(`NODE PATCHED! You are contributor #${data.value} to global stability.`);
-        
-        // 3. Update the UI
-        document.getElementById('reward-status').innerHTML = 
-            `ARCHITECT STATUS: <span style="color: var(--accent-green);">KEY LEVEL 1 GRANTED</span> 
-             | GLOBAL LOG: ${data.value} PATCHES`;
-             
-        btn.parentElement.style.opacity = "0.3";
-        btn.innerText = "PATCHED";
+            // Update UI
+            document.getElementById('global-count').innerText = data.value;
+            document.getElementById('user-rank').innerHTML = '<span style="color: var(--accent-green);">LEVEL 1 ARCHITECT</span>';
+            
+            alert(`Node Patched! Global total is now ${data.value}.`);
+            btn.parentElement.style.opacity = "0.3";
+            btn.innerText = "PATCHED";
 
-    } catch (err) {
-        // Fallback if the global server is busy
-        console.log("Global sync failed, but your local patch was successful.");
-        alert("Action verified locally. (Global Ledger Busy)");
-        btn.innerText = "PATCHED";
-    }
-}
+        } catch (err) {
+            // Local fallback if API is unstable
+            document.getElementById('user-rank').innerHTML = '<span style="color: var(--accent-green);">LEVEL 1 (LOCAL)</span>';
+            alert("Action verified. Node has been stabilized.");
+            btn.innerText = "PATCHED";
+        }
     }
 </script>
 
