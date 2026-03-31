@@ -50,6 +50,17 @@
 </div>
 
 <script>
+// When the page opens, check the global total immediately
+window.onload = async () => {
+    try {
+        const response = await fetch('https://api.countapi.xyz/get/apl_prototype_2026/patches');
+        const data = await response.json();
+        document.getElementById('reward-status').innerHTML = 
+            `ARCHITECT STATUS: <span style="color: #444;">DISCONNECTED</span> | GLOBAL LOG: ${data.value || 0} PATCHES`;
+    } catch (err) {
+        console.log("Starting new log...");
+    }
+};
     async function scanAtmosphere() {
         const city = document.getElementById('citySearch').value;
         const feed = document.getElementById('feed-container');
@@ -98,14 +109,35 @@
     }
 
     function patchAndReward(btn) {
-        btn.innerText = "AUTHENTICATING EFFORT...";
-        btn.style.background = "#333";
-        setTimeout(() => {
-            alert("ACTION VERIFIED. The world is slightly better because of your silent contribution.");
-            document.getElementById('reward-status').innerHTML = 'ARCHITECT STATUS: <span style="color: var(--accent-green);">KEY LEVEL 1 GRANTED</span>';
-            btn.parentElement.style.opacity = "0.3";
-            btn.innerText = "PATCHED";
-        }, 1500);
+        // This function now updates a GLOBAL counter that everyone sees
+async function patchAndReward(btn) {
+    btn.innerText = "SYNCING WITH GLOBAL LEDGER...";
+    btn.disabled = true;
+
+    try {
+        // 1. Tell the global server to 'plus one' the APL counter
+        // Replace 'apl_prototype_2026' with any unique name for your project
+        const response = await fetch('https://api.countapi.xyz/hit/apl_prototype_2026/patches');
+        const data = await response.json();
+
+        // 2. Local feedback for the user
+        alert(`NODE PATCHED! You are contributor #${data.value} to global stability.`);
+        
+        // 3. Update the UI
+        document.getElementById('reward-status').innerHTML = 
+            `ARCHITECT STATUS: <span style="color: var(--accent-green);">KEY LEVEL 1 GRANTED</span> 
+             | GLOBAL LOG: ${data.value} PATCHES`;
+             
+        btn.parentElement.style.opacity = "0.3";
+        btn.innerText = "PATCHED";
+
+    } catch (err) {
+        // Fallback if the global server is busy
+        console.log("Global sync failed, but your local patch was successful.");
+        alert("Action verified locally. (Global Ledger Busy)");
+        btn.innerText = "PATCHED";
+    }
+}
     }
 </script>
 
