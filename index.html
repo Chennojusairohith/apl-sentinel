@@ -1,55 +1,207 @@
-// --- ADD THIS AT THE TOP OF YOUR <script> SECTION ---
-
-// Initialize Wallet from LocalStorage or set to 0
-let aplCredits = parseInt(localStorage.getItem('apl_credits')) || 0;
-let satelliteLevel = parseInt(localStorage.getItem('sat_level')) || 1;
-
-function updateWalletUI() {
-    document.getElementById('wallet-display').innerText = `CREDITS: ${aplCredits} APL`;
-    document.getElementById('sat-level-display').innerText = `SAT-RES: ${satelliteLevel}.0x`;
-    
-    // Save to browser memory
-    localStorage.setItem('apl_credits', aplCredits);
-    localStorage.setItem('sat_level', satelliteLevel);
-}
-
-// --- UPDATE YOUR verifyPatch() FUNCTION ---
-
-function verifyPatch() {
-    addLog("Uploading proof to Global Ledger...");
-    
-    setTimeout(() => {
-        aplCredits += 100; // Reward for verification
-        updateWalletUI();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APL | Master Sentinel v3.0</title>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <style>
+        :root { --bg: #050505; --accent-red: #ff3333; --accent-green: #00ffa3; --text: #f0f0f0; --panel: #111111; }
+        body { background: var(--bg); color: var(--text); font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; height: 100vh; overflow: hidden; flex-direction: column; }
         
-        addLog("VERIFICATION SUCCESSFUL: +100 APL Credits.");
-        alert("Mission Complete. 100 Credits added to your APL Ledger.");
+        #main-container { display: flex; flex-grow: 1; overflow: hidden; }
         
-        // Reset the camera UI for next mission
-        document.getElementById('camera-zone').style.display = 'none';
-        document.getElementById('snapshot').style.display = 'none';
-        document.getElementById('video').style.display = 'block';
-    }, 2000);
-}
-
-// --- ADD THE UPGRADE FUNCTION ---
-
-function upgradeSatellite() {
-    const cost = 250;
-    if (aplCredits >= cost) {
-        aplCredits -= cost;
-        satelliteLevel += 1;
-        updateWalletUI();
-        addLog(`UPLINK UPGRADED: Resolution now at ${satelliteLevel}.0x`);
+        /* Sidebar Navigation */
+        #sidebar { width: 380px; background: var(--panel); border-right: 1px solid #222; padding: 20px; box-sizing: border-box; display: flex; flex-direction: column; z-index: 10; }
+        .sidebar-header { border-bottom: 1px solid #333; padding-bottom: 10px; margin-bottom: 15px; }
         
-        // Visual effect: Make the satellite map clearer
-        const satView = document.getElementById('satellite-view');
-        satView.style.opacity = 0.4 + (satelliteLevel * 0.1);
-        satView.style.filter = `grayscale(${100 - (satelliteLevel * 10)}%) brightness(0.6)`;
-    } else {
-        alert(`Insufficient Credits. You need ${cost - aplCredits} more APL.`);
+        /* Wallet & Credits */
+        #wallet-zone { background: #000; border: 1px solid #333; padding: 10px; margin-bottom: 15px; text-align: center; }
+        .credit-count { color: var(--accent-green); font-size: 1.2rem; font-weight: bold; }
+        
+        /* Camera & Verification */
+        #camera-zone { display: none; margin-top: 10px; border: 1px solid var(--accent-green); padding: 5px; background: #000; }
+        video { width: 100%; filter: grayscale(100%) contrast(1.2); }
+        #snapshot { width: 100%; display: none; margin-top: 5px; border: 1px solid white; }
+
+        /* Collaborative Grid */
+        #collab-feed { flex-grow: 1; background: #000; border: 1px solid #222; margin-top: 15px; padding: 10px; overflow: hidden; }
+        .feed-item { font-size: 0.65rem; margin-bottom: 8px; border-bottom: 1px solid #111; padding-bottom: 5px; animation: slideIn 0.5s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; } }
+
+        /* Map & UI */
+        #map-area { flex-grow: 1; position: relative; background: #000; display: flex; justify-content: center; align-items: center; }
+        #satellite-view { position: absolute; width: 100%; height: 100%; opacity: 0.3; background-image: url('https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/BlueMarble_ShadedRelief_Bathymetry/default/2026-03-31/2km/0/0/0.jpg'); background-size: cover; filter: grayscale(100%); transition: 1s; }
+        .globe-ui { width: 300px; height: 300px; border-radius: 50%; border: 1px solid rgba(0, 255, 163, 0.2); z-index: 5; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        #temp-val { font-size: 4rem; font-weight: bold; margin: 0; }
+
+        /* Controls */
+        input { width: 100%; padding: 10px; background: #000; border: 1px solid #333; color: var(--accent-green); margin-bottom: 5px; outline: none; }
+        button { width: 100%; padding: 10px; background: var(--accent-green); border: none; font-weight: bold; cursor: pointer; margin-bottom: 5px; font-family: inherit; }
+        .btn-alert { background: var(--accent-red); color: white; display: none; }
+
+        /* News Ticker */
+        #ticker-container { width: 100%; background: #000; border-top: 1px solid var(--accent-green); height: 40px; display: flex; align-items: center; overflow: hidden; }
+        .ticker-text { display: inline-block; padding-left: 100%; animation: ticker 80s linear infinite; font-size: 0.8rem; color: var(--accent-green); white-space: nowrap; }
+        @keyframes ticker { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+    </style>
+</head>
+<body>
+
+<div id="main-container">
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <h2 style="color: var(--accent-green); margin: 0; font-size: 0.9rem;">APL SENTINEL v3.0</h2>
+            <div style="font-size: 0.5rem; color: #555;">MARCH 31, 2026 | ANDHRA PRADESH NODE</div>
+        </div>
+
+        <div id="wallet-zone">
+            <div class="credit-count" id="wallet-display">0 APL</div>
+            <div id="sat-level" style="font-size: 0.6rem; color: #666;">SAT-RES: 1.0x</div>
+            <button onclick="upgradeSatellite()" style="font-size: 0.6rem; padding: 4px; background: #222; color: var(--accent-green); border: 1px solid #444; margin-top: 5px;">UPGRADE SENSORS (250 APL)</button>
+        </div>
+
+        <input type="text" id="citySearch" placeholder="LOCATE ANOMALY...">
+        <button onclick="scanRegion()">INITIATE SCAN</button>
+        <button id="alertBtn" class="btn-alert" onclick="broadcastAlert()">BROADCAST EMERGENCY</button>
+
+        <div id="camera-zone">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas" style="display:none;"></canvas>
+            <img id="snapshot" alt="Vedic Proof">
+            <button onclick="takeSnapshot()" style="background: white; color: black; margin-top: 5px;">CAPTURE PROOF</button>
+            <button id="verifyBtn" onclick="verifyPatch()" style="display:none; margin-top: 5px;">UPLOAD TO LEDGER</button>
+        </div>
+
+        <div id="collab-feed">
+            <div style="font-size: 0.5rem; color: #444; margin-bottom: 5px;">COLLABORATIVE GRID FEED</div>
+            <div id="feed-container"></div>
+        </div>
+    </div>
+
+    <div id="map-area">
+        <div id="satellite-view"></div>
+        <div class="globe-ui">
+            <div id="temp-val">--</div>
+            <div id="location-tag" style="color: var(--accent-green); font-size: 0.7rem; letter-spacing: 2px;">READY</div>
+        </div>
+    </div>
+</div>
+
+<div id="ticker-container">
+    <div class="ticker-text" id="ticker-content">
+        [31-03-2026] Digital Census Phase 1 Live | AP DGP confirms LWE Zero Status | QR-coded rice tracking launched in Vijayawada | "Karmanye vadhikaraste ma phaleshu kadachana"
+    </div>
+</div>
+
+<script>
+    // 1. DATA INITIALIZATION
+    let credits = parseInt(localStorage.getItem('apl_credits')) || 0;
+    let satLevel = parseInt(localStorage.getItem('sat_level')) || 1;
+    let currentCity = "";
+    let currentTemp = 0;
+
+    window.onload = () => {
+        updateUI();
+        setInterval(addCollabUpdate, 12000); // Start the collaborative grid simulation
+    };
+
+    function updateUI() {
+        document.getElementById('wallet-display').innerText = `${credits} APL`;
+        document.getElementById('sat-level').innerText = `SAT-RES: ${satLevel}.0x`;
+        localStorage.setItem('apl_credits', credits);
+        localStorage.setItem('sat_level', satLevel);
     }
-}
 
-// Initialize UI on load
-window.onload = updateWalletUI;
+    // 2. SCAN & TELEMETRY
+    async function scanRegion() {
+        const city = document.getElementById('citySearch').value;
+        if (!city) return;
+        
+        try {
+            const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&format=json`);
+            const geoData = await geo.json();
+            const { name } = geoData.results[0];
+
+            // Simulated Anomaly for interaction
+            currentCity = name;
+            currentTemp = 38 + Math.floor(Math.random() * 5); // Simulating 38-43°C
+            
+            document.getElementById('temp-val').innerText = currentTemp + "°";
+            document.getElementById('location-tag').innerText = name.toUpperCase();
+            
+            if(currentTemp >= 39) {
+                document.getElementById('alertBtn').style.display = "block";
+                document.getElementById('camera-zone').style.display = "block";
+                startCamera();
+            }
+        } catch (e) { alert("Uplink Error."); }
+    }
+
+    // 3. PHASE 2: CAMERA & VEDIC WATERMARK
+    async function startCamera() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            document.getElementById('video').srcObject = stream;
+        } catch (err) { alert("Camera Permission Required."); }
+    }
+
+    function takeSnapshot() {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        const snapshot = document.getElementById('snapshot');
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Vedic Watermark
+        context.fillStyle = "rgba(0, 255, 163, 0.8)";
+        context.font = "bold 18px Courier New";
+        context.fillText("Karmanye vadhikaraste ma phaleshu kadachana", 20, canvas.height - 40);
+        context.font = "12px Courier New";
+        context.fillText(`NODE: ${currentCity.toUpperCase()} | ${new Date().toLocaleString()}`, 20, canvas.height - 20);
+
+        snapshot.src = canvas.toDataURL('image/png');
+        snapshot.style.display = 'block';
+        video.style.display = 'none';
+        document.getElementById('verifyBtn').style.display = 'block';
+    }
+
+    function verifyPatch() {
+        credits += 100;
+        updateUI();
+        alert("Node Patched. +100 APL Credits awarded.");
+        location.reload(); 
+    }
+
+    // 4. PHASE 3: COLLABORATIVE GRID
+    const otherArchitects = [
+        { id: "ARC_GNT_09", loc: "Guntur", action: "Patched Node" },
+        { id: "ARC_VZG_21", loc: "Vizag", action: "Uploaded Proof" },
+        { id: "ARC_HYD_11", loc: "Hyderabad", action: "Stabilized Grid" }
+    ];
+
+    function addCollabUpdate() {
+        const container = document.getElementById('feed-container');
+        const arc = otherArchitects[Math.floor(Math.random() * otherArchitects.length)];
+        const div = document.createElement('div');
+        div.className = 'feed-item';
+        div.innerHTML = `<span style="color:var(--accent-green)">[${arc.id}]</span> ${arc.action} in ${arc.loc}`;
+        container.prepend(div);
+        if (container.children.length > 5) container.removeChild(container.lastChild);
+    }
+
+    function upgradeSatellite() {
+        if(credits >= 250) {
+            credits -= 250;
+            satLevel++;
+            updateUI();
+            document.getElementById('satellite-view').style.opacity = 0.3 + (satLevel * 0.1);
+            alert("Uplink Optimized.");
+        } else { alert("Insufficient APL."); }
+    }
+</script>
+</body>
+</html>
