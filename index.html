@@ -3,36 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APL | Command Sentinel v1.5</title>
+    <title>APL | Satellite Sentinel v1.6</title>
     <style>
         :root { --bg: #050505; --accent-red: #ff3333; --accent-green: #00ffa3; --text: #f0f0f0; --panel: #111111; }
         body { background: var(--bg); color: var(--text); font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; height: 100vh; overflow: hidden; flex-direction: column; }
         
         #main-container { display: flex; flex-grow: 1; overflow: hidden; }
-        #sidebar { width: 380px; background: var(--panel); border-right: 1px solid #222; padding: 25px; box-sizing: border-box; z-index: 10; display: flex; flex-direction: column; }
-        input { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: var(--accent-green); outline: none; margin-bottom: 10px; }
-        button { width: 100%; padding: 12px; background: var(--accent-green); border: none; color: #000; font-weight: bold; cursor: pointer; }
         
-        /* COMMAND LOG */
-        #command-log { flex-grow: 1; margin-top: 20px; background: #000; border: 1px solid #222; padding: 10px; font-size: 0.7rem; overflow-y: auto; color: #666; }
-        .log-entry { margin-bottom: 5px; border-left: 2px solid #333; padding-left: 5px; }
-        .log-alert { color: var(--accent-red); border-left-color: var(--accent-red); }
+        /* Sidebar & Log */
+        #sidebar { width: 380px; background: var(--panel); border-right: 1px solid #222; padding: 25px; box-sizing: border-box; display: flex; flex-direction: column; }
+        #command-log { flex-grow: 1; margin-top: 15px; background: #000; border: 1px solid #222; padding: 10px; font-size: 0.65rem; overflow-y: auto; color: #555; }
+        
+        input { width: 100%; padding: 10px; background: #000; border: 1px solid #333; color: var(--accent-green); margin-bottom: 5px; }
+        button { width: 100%; padding: 10px; background: var(--accent-green); border: none; font-weight: bold; cursor: pointer; }
 
-        #map-area { flex-grow: 1; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%); }
-        .globe-ui { width: 350px; height: 350px; border-radius: 50%; border: 1px solid #222; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; transition: 0.3s; }
-        .pulse-ring { position: absolute; width: 100%; height: 100%; border: 2px solid var(--accent-green); border-radius: 50%; animation: pulse 2s infinite; opacity: 0; }
+        /* SATELLITE MAP AREA */
+        #map-area { flex-grow: 1; position: relative; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; }
         
-        @keyframes pulse { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.5); opacity: 0; } }
-        #temp-val { font-size: 4rem; margin: 0; font-weight: bold; z-index: 5; }
-        
-        /* ALARM STATE */
-        .alarm-active { border-color: var(--accent-red); box-shadow: 0 0 50px rgba(255, 51, 51, 0.2); }
-        .alarm-active .pulse-ring { border-color: var(--accent-red); }
+        /* Live NASA Satellite Layer */
+        #satellite-view { 
+            position: absolute; width: 100%; height: 100%; 
+            background-image: url('https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/BlueMarble_ShadedRelief_Bathymetry/default/2026-03-31/2km/0/0/0.jpg');
+            background-size: cover; background-position: center; opacity: 0.4; filter: grayscale(100%) brightness(0.5);
+        }
 
-        /* TICKER STYLES (Kept from v1.4) */
-        #ticker-container { width: 100%; background: #000; border-top: 1px solid var(--accent-green); height: 45px; display: flex; align-items: center; overflow: hidden; white-space: nowrap; }
-        .ticker-label { background: var(--accent-green); color: #000; padding: 0 20px; font-weight: bold; height: 100%; display: flex; align-items: center; }
-        .ticker-text { display: inline-block; padding-left: 100%; animation: ticker-move 80s linear infinite; font-size: 0.9rem; }
+        .globe-ui { width: 320px; height: 320px; border-radius: 50%; border: 1px solid rgba(0, 255, 163, 0.3); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); }
+        #temp-val { font-size: 4.5rem; font-weight: bold; margin: 0; }
+        
+        /* TICKER (Updated for today) */
+        #ticker-container { width: 100%; background: #000; border-top: 1px solid var(--accent-green); height: 40px; display: flex; align-items: center; overflow: hidden; }
+        .ticker-label { background: var(--accent-green); color: #000; padding: 0 15px; font-weight: bold; height: 100%; display: flex; align-items: center; font-size: 0.8rem; }
+        .ticker-text { display: inline-block; padding-left: 100%; animation: ticker-move 70s linear infinite; font-size: 0.85rem; color: var(--accent-green); white-space: nowrap; }
         @keyframes ticker-move { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
     </style>
 </head>
@@ -40,82 +41,64 @@
 
 <div id="main-container">
     <div id="sidebar">
-        <h2 style="color: var(--accent-green); margin: 0; font-size: 1rem;">AGENTIC SENTINEL v1.5</h2>
-        <p style="color: #444; font-size: 0.6rem;">AUTO-SCAN: <span id="scan-status" style="color: var(--accent-green)">ACTIVE</span></p>
+        <h2 style="color: var(--accent-green); margin: 0; font-size: 0.9rem;">SATELLITE LINK: ESTABLISHED</h2>
+        <p style="color: #444; font-size: 0.55rem; margin-bottom: 15px;">SOURCE: NASA GIBS / SENTINEL-2</p>
         
-        <input type="text" id="citySearch" placeholder="MANUAL OVERRIDE...">
-        <button onclick="manualScan()">SCAN REGION</button>
+        <input type="text" id="citySearch" placeholder="LOCATE TARGET...">
+        <button onclick="scanRegion()">ENGAGE SENSORS</button>
 
         <div id="command-log">
-            <div class="log-entry">[SYSTEM] Sentinel Neural Link established.</div>
+            <div style="color: var(--accent-green)">[SYSTEM] Handshake with NASA Earthdata... OK</div>
+            <div>[INFO] Loading 30m resolution harmonized tiles...</div>
         </div>
     </div>
 
     <div id="map-area">
-        <div class="globe-ui" id="main-globe">
-            <div class="pulse-ring"></div>
+        <div id="satellite-view"></div> <div class="globe-ui">
             <div id="temp-val">--</div>
-            <div id="location-tag" style="color: #444; letter-spacing: 2px; font-size: 0.7rem;">IDLE</div>
+            <div id="location-tag" style="color: var(--accent-green); font-size: 0.7rem; letter-spacing: 2px;">READY</div>
         </div>
     </div>
 </div>
 
 <div id="ticker-container">
-    <div class="ticker-label">INTEL</div>
-    <div class="ticker-text" id="news-ticker-content">Loading live 2026 data stream...</div>
+    <div class="ticker-label">LIVE DATA</div>
+    <div class="ticker-text">
+        [31-03-2026] Digital Census Phase 1 starts in India | 10% observation loss reported on Sentinel-2 ground station (Resolved) | AP Government launches QR-coded transparency for rice exports | Heatwave warning in Rayalaseema: 42°C expected | "Karmanye vadhikaraste ma phaleshu kadachana"
+    </div>
 </div>
 
 <script>
-    const log = document.getElementById('command-log');
-    const globe = document.getElementById('main-globe');
-    const randomCities = ["Vijayawada", "London", "Tokyo", "New York", "Dubai", "Sydney"];
-
-    function addLog(msg, isAlert = false) {
-        const div = document.createElement('div');
-        div.className = isAlert ? 'log-entry log-alert' : 'log-entry';
-        div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
-        log.prepend(div);
+    function addLog(msg) {
+        const entry = document.createElement('div');
+        entry.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        document.getElementById('command-log').prepend(entry);
     }
 
-    async function performScan(city) {
-        addLog(`Pinging ${city} sensors...`);
+    async function scanRegion() {
+        const city = document.getElementById('citySearch').value;
+        if (!city) return;
+        addLog(`Requesting telemetry for ${city}...`);
+        
         try {
-            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&format=json`);
-            const geoData = await geoRes.json();
+            const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&format=json`);
+            const geoData = await geo.json();
             const { latitude, longitude, name } = geoData.results[0];
 
-            const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
-            const weatherData = await weatherRes.json();
-            const temp = Math.round(weatherData.current_weather.temperature);
-
-            document.getElementById('temp-val').innerText = temp + "°";
+            const weather = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+            const weatherData = await weather.json();
+            
+            document.getElementById('temp-val').innerText = Math.round(weatherData.current_weather.temperature) + "°";
             document.getElementById('location-tag').innerText = name.toUpperCase();
+            
+            addLog(`Vitals received: ${name} is stable.`);
+            
+            // Simulating satellite "Zoom" effect
+            document.getElementById('satellite-view').style.filter = "grayscale(0%) brightness(0.8)";
+            setTimeout(() => { document.getElementById('satellite-view').style.filter = "grayscale(100%) brightness(0.5)"; }, 2000);
 
-            if (temp >= 35) {
-                globe.classList.add('alarm-active');
-                addLog(`CRITICAL: High heat detected in ${name}!`, true);
-            } else {
-                globe.classList.remove('alarm-active');
-                addLog(`Scan complete. ${name} environment stable.`);
-            }
-        } catch (e) { addLog("Sensor timeout..."); }
+        } catch (e) { addLog("Uplink failed. Retrying..."); }
     }
-
-    function manualScan() {
-        const city = document.getElementById('citySearch').value;
-        if(city) performScan(city);
-    }
-
-    // THE AGENTIC LOOP: Automatically scans a random city every 20 seconds
-    setInterval(() => {
-        const randomCity = randomCities[Math.floor(Math.random() * randomCities.length)];
-        performScan(randomCity);
-    }, 20000);
-
-    // Load initial news for the ticker
-    document.getElementById('news-ticker-content').innerText = 
-        "[MARCH 31] Digital Census Phase 1 starts... [ANDHRA] QR-coded rice bags launched... [SENTINEL] Auto-monitoring enabled... [QUICK TRICK] Ratio method: 10% interest for 2 years = 21% total.";
-
 </script>
 </body>
 </html>
