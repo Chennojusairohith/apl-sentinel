@@ -1,126 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APL | Phase 2: Verification</title>
-    <style>
-        :root { --bg: #050505; --accent-red: #ff3333; --accent-green: #00ffa3; --text: #f0f0f0; --panel: #111111; }
-        body { background: var(--bg); color: var(--text); font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; height: 100vh; overflow: hidden; flex-direction: column; }
-        
-        #main-container { display: flex; flex-grow: 1; overflow: hidden; }
-        #sidebar { width: 380px; background: var(--panel); border-right: 1px solid #222; padding: 25px; box-sizing: border-box; display: flex; flex-direction: column; }
-        
-        /* CAMERA UI */
-        #camera-zone { display: none; margin-top: 20px; border: 1px solid var(--accent-green); background: #000; padding: 10px; text-align: center; }
-        video { width: 100%; border-radius: 4px; filter: grayscale(100%) contrast(1.2); }
-        #snapshot { width: 100%; display: none; border: 1px solid white; margin-top: 10px; }
-        
-        #command-log { flex-grow: 1; margin-top: 15px; background: #000; border: 1px solid #222; padding: 10px; font-size: 0.65rem; overflow-y: auto; color: #555; }
-        input { width: 100%; padding: 10px; background: #000; border: 1px solid #333; color: var(--accent-green); margin-bottom: 5px; }
-        button { width: 100%; padding: 10px; background: var(--accent-green); border: none; font-weight: bold; cursor: pointer; margin-bottom: 5px; }
-        
-        #map-area { flex-grow: 1; position: relative; background: #000; display: flex; justify-content: center; align-items: center; }
-        .globe-ui { width: 300px; height: 300px; border-radius: 50%; border: 1px solid rgba(0, 255, 163, 0.3); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5; background: rgba(0,0,0,0.8); }
-        #temp-val { font-size: 4rem; font-weight: bold; }
-    </style>
-</head>
-<body>
+// --- Replace your takeSnapshot() function with this advanced version ---
 
-<div id="main-container">
-    <div id="sidebar">
-        <h2 style="color: var(--accent-green); margin: 0; font-size: 0.9rem;">PHASE 2: VERIFICATION</h2>
-        <p style="color: #444; font-size: 0.55rem; margin-bottom: 15px;">STATUS: PROOF OF EFFORT REQUIRED</p>
-        
-        <input type="text" id="citySearch" placeholder="SCAN REGION...">
-        <button onclick="scanRegion()">ENGAGE SENSORS</button>
+function takeSnapshot() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    const snapshot = document.getElementById('snapshot');
 
-        <div id="camera-zone">
-            <p style="font-size: 0.7rem; color: var(--accent-green);">[!] UPLOAD PROOF OF PATCH</p>
-            <video id="video" autoplay playsinline></video>
-            <button onclick="takeSnapshot()" style="background: white; color: black; margin-top:10px;">CAPTURE EVIDENCE</button>
-            <canvas id="canvas" style="display:none;"></canvas>
-            <img id="snapshot" src="" alt="Proof">
-            <button id="uploadBtn" onclick="verifyPatch()" style="display:none; background: var(--accent-green);">UPLOAD TO LEDGER</button>
-        </div>
+    // 1. Set canvas size to match the video feed
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
 
-        <div id="command-log">
-            <div>[SYSTEM] Waiting for local anomaly...</div>
-        </div>
-    </div>
+    // 2. Draw the live camera frame onto the canvas
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    <div id="map-area">
-        <div class="globe-ui">
-            <div id="temp-val">--</div>
-            <div id="location-tag" style="color: var(--accent-green); font-size: 0.7rem; letter-spacing: 2px;">READY</div>
-        </div>
-    </div>
-</div>
+    // 3. APPLY THE VEDIC WATERMARK
+    context.fillStyle = "rgba(0, 255, 163, 0.7)"; // Transparent APL Green
+    context.font = "bold 20px 'Courier New'";
+    
+    // Draw the Sanskrit Quote
+    const quote = "Karmanye vadhikaraste ma phaleshu kadachana";
+    const timestamp = new Date().toLocaleString();
+    const location = "LOCATION: VIJAYAWADA NODE";
 
-<script>
-    let videoStream = null;
+    // Position the text at the bottom-left
+    context.fillText(quote, 20, canvas.height - 60);
+    context.font = "14px 'Courier New'";
+    context.fillText(location, 20, canvas.height - 40);
+    context.fillText(timestamp, 20, canvas.height - 20);
 
-    function addLog(msg) {
-        const entry = document.createElement('div');
-        entry.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
-        document.getElementById('command-log').prepend(entry);
-    }
-
-    async function scanRegion() {
-        const city = document.getElementById('citySearch').value;
-        if (!city) return;
-        
-        try {
-            const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&format=json`);
-            const geoData = await geo.json();
-            const { name } = geoData.results[0];
-
-            // For testing: We simulate an anomaly in ANY city you type
-            document.getElementById('temp-val').innerText = "42°";
-            document.getElementById('location-tag').innerText = name.toUpperCase();
-            
-            addLog(`CRITICAL: Anomaly detected in ${name}.`);
-            startCamera();
-        } catch (e) { addLog("Sensor Sync Error."); }
-    }
-
-    async function startCamera() {
-        document.getElementById('camera-zone').style.display = 'block';
-        try {
-            videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            document.getElementById('video').srcObject = videoStream;
-            addLog("Camera Link: Online. Capture the solution.");
-        } catch (err) {
-            addLog("Camera Access Denied.");
-            alert("Please allow camera access for verification.");
-        }
-    }
-
-    function takeSnapshot() {
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const context = canvas.getContext('2d');
-        const snapshot = document.getElementById('snapshot');
-
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        const data = canvas.toDataURL('image/png');
-        snapshot.src = data;
-        snapshot.style.display = 'block';
-        video.style.display = 'none';
-        document.getElementById('uploadBtn').style.display = 'block';
-        addLog("Evidence captured. Review before upload.");
-    }
-
-    function verifyPatch() {
-        addLog("Uploading proof to Global Ledger...");
-        setTimeout(() => {
-            alert("VERIFICATION SUCCESSFUL: Your contribution has been recorded. 100 APL Credits granted.");
-            location.reload(); // Reset for next mission
-        }, 2000);
-    }
-</script>
-</body>
-</html>
+    // 4. Create the final image
+    const data = canvas.toDataURL('image/png');
+    snapshot.src = data;
+    snapshot.style.display = 'block';
+    
+    // UI Cleanup
+    video.style.display = 'none';
+    document.getElementById('uploadBtn').style.display = 'block';
+    addLog("VEDIC WATERMARK APPLIED. Proof is ready for Ledger.");
+}
