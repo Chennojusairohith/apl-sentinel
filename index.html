@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APL | Zero-Key Sentinel</title>
+    <style>
+        :root { --bg: #050505; --accent-red: #ff3333; --accent-green: #00ffa3; --text: #f0f0f0; --panel: #111111; }
+        body { background: var(--bg); color: var(--text); font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        #sidebar { width: 380px; background: var(--panel); border-right: 1px solid #222; padding: 25px; box-sizing: border-box; display: flex; flex-direction: column; }
+        #map-area { flex-grow: 1; position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(circle at center, #1a1a1a 0%, #050505 100%); }
+        .input-group { margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; background: #000; border: 1px solid #333; color: var(--accent-green); outline: none; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: var(--accent-green); border: none; color: #000; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.3s; }
+        button:hover { background: #fff; }
+        .anomaly-card { background: #1a1a1a; border: 1px solid #333; border-left: 5px solid var(--accent-red); padding: 15px; margin-top: 20px; animation: slideIn 0.5s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+        .globe-ui { width: 450px; height: 450px; border-radius: 50%; border: 1px solid #222; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 0 100px rgba(0, 255, 163, 0.05); }
+        #temp-val { font-size: 5rem; margin: 0; font-weight: bold; color: var(--text); }
+        .reward-box { position: absolute; bottom: 30px; right: 30px; padding: 15px; border: 1px solid #333; background: rgba(0,0,0,0.8); font-size: 0.8rem; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h1 style="color: var(--accent-green); margin: 0; font-size: 1.5rem;">APL :: SENTINEL</h1>
+    <p style="color: #555; font-size: 0.7rem; margin-bottom: 30px;">OPEN-METEO DATA STREAM ACTIVE</p>
+
+    <div class="input-group">
+        <label style="font-size: 0.8rem; color: #888;">TARGET COORDINATES (CITY)</label>
+        <input type="text" id="citySearch" placeholder="e.g. Vijayawada">
+        <button onclick="scanAtmosphere()">INITIATE SCAN</button>
+    </div>
+
+    <div id="feed-container">
+        </div>
+</div>
+
+<div id="map-area">
+    <div class="reward-box" id="reward-status">
+        ARCHITECT STATUS: <span style="color: #444;">DISCONNECTED</span>
+    </div>
+
+    <div class="globe-ui">
+        <div id="temp-val">--</div>
+        <div id="location-tag" style="color: #555; letter-spacing: 3px;">STANDBY</div>
+    </div>
+    
+    <p style="position: absolute; bottom: 20px; color: #222; font-size: 0.7rem;">UNIVERSE-FIRST ANOMALY DETECTION ENGINE</p>
+</div>
+
+<script>
+    async function scanAtmosphere() {
+        const city = document.getElementById('citySearch').value;
+        const feed = document.getElementById('feed-container');
+        if (!city) return;
+
+        feed.innerHTML = "<p style='color: var(--accent-green)'>Geocoding location...</p>";
+
+        try {
+            // Step 1: Convert City Name to Lat/Long (No Key needed)
+            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&language=en&format=json`);
+            const geoData = await geoRes.json();
+
+            if (!geoData.results) throw new Error("Location not found in database.");
+            const { latitude, longitude, name } = geoData.results[0];
+
+            // Step 2: Get Live Weather Data (No Key needed)
+            const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
+            const weatherData = await weatherRes.json();
+            const temp = Math.round(weatherData.current_weather.temperature);
+
+            // Update UI
+            document.getElementById('temp-val').innerText = temp + "°";
+            document.getElementById('location-tag').innerText = name.toUpperCase();
+
+            // Logic: Trigger Anomaly if Temp > 38°C (Extreme Heat)
+            if (temp >= 38) {
+                feed.innerHTML = `
+                    <div class="anomaly-card">
+                        <span style="color: var(--accent-red)">[!] THERMAL ANOMALY</span><br>
+                        <p style="font-size: 0.8rem; line-height: 1.4;">Extreme heat detected in ${name}. Vulnerable populations at risk of dehydration.</p>
+                        <button onclick="patchAndReward(this)" style="background: var(--accent-red); color: white;">COMMIT SILENT AID</button>
+                    </div>
+                `;
+            } else {
+                feed.innerHTML = `
+                    <div class="anomaly-card" style="border-left-color: var(--accent-green)">
+                        <span style="color: var(--accent-green)">[✓] STABLE NODE</span><br>
+                        <p style="font-size: 0.8rem; line-height: 1.4;">Atmospheric parameters for ${name} are within human safety limits.</p>
+                    </div>
+                `;
+            }
+
+        } catch (err) {
+            feed.innerHTML = `<p style="color: var(--accent-red)">ERROR: ${err.message}</p>`;
+        }
+    }
+
+    function patchAndReward(btn) {
+        btn.innerText = "AUTHENTICATING EFFORT...";
+        btn.style.background = "#333";
+        setTimeout(() => {
+            alert("ACTION VERIFIED. The world is slightly better because of your silent contribution.");
+            document.getElementById('reward-status').innerHTML = 'ARCHITECT STATUS: <span style="color: var(--accent-green);">KEY LEVEL 1 GRANTED</span>';
+            btn.parentElement.style.opacity = "0.3";
+            btn.innerText = "PATCHED";
+        }, 1500);
+    }
+</script>
+
+</body>
+</html>
