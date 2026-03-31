@@ -3,39 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APL | Mission Control v1.7</title>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <title>APL | Phase 2: Verification</title>
     <style>
         :root { --bg: #050505; --accent-red: #ff3333; --accent-green: #00ffa3; --text: #f0f0f0; --panel: #111111; }
         body { background: var(--bg); color: var(--text); font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; height: 100vh; overflow: hidden; flex-direction: column; }
+        
         #main-container { display: flex; flex-grow: 1; overflow: hidden; }
         #sidebar { width: 380px; background: var(--panel); border-right: 1px solid #222; padding: 25px; box-sizing: border-box; display: flex; flex-direction: column; }
+        
+        /* CAMERA UI */
+        #camera-zone { display: none; margin-top: 20px; border: 1px solid var(--accent-green); background: #000; padding: 10px; text-align: center; }
+        video { width: 100%; border-radius: 4px; filter: grayscale(100%) contrast(1.2); }
+        #snapshot { width: 100%; display: none; border: 1px solid white; margin-top: 10px; }
+        
         #command-log { flex-grow: 1; margin-top: 15px; background: #000; border: 1px solid #222; padding: 10px; font-size: 0.65rem; overflow-y: auto; color: #555; }
         input { width: 100%; padding: 10px; background: #000; border: 1px solid #333; color: var(--accent-green); margin-bottom: 5px; }
         button { width: 100%; padding: 10px; background: var(--accent-green); border: none; font-weight: bold; cursor: pointer; margin-bottom: 5px; }
-        .btn-alert { background: var(--accent-red); color: white; display: none; } /* Hidden by default */
+        
         #map-area { flex-grow: 1; position: relative; background: #000; display: flex; justify-content: center; align-items: center; }
-        .globe-ui { width: 320px; height: 320px; border-radius: 50%; border: 1px solid rgba(0, 255, 163, 0.3); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5; background: rgba(0,0,0,0.8); }
-        #temp-val { font-size: 4.5rem; font-weight: bold; }
-        #ticker-container { width: 100%; background: #000; border-top: 1px solid var(--accent-green); height: 40px; display: flex; align-items: center; overflow: hidden; }
-        .ticker-text { display: inline-block; padding-left: 100%; animation: ticker-move 70s linear infinite; font-size: 0.85rem; color: var(--accent-green); white-space: nowrap; }
-        @keyframes ticker-move { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+        .globe-ui { width: 300px; height: 300px; border-radius: 50%; border: 1px solid rgba(0, 255, 163, 0.3); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5; background: rgba(0,0,0,0.8); }
+        #temp-val { font-size: 4rem; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div id="main-container">
     <div id="sidebar">
-        <h2 style="color: var(--accent-green); margin: 0; font-size: 0.9rem;">MISSION CONTROL ACTIVE</h2>
-        <p style="color: #444; font-size: 0.55rem; margin-bottom: 15px;">UPLINK STATUS: ENCRYPTED</p>
+        <h2 style="color: var(--accent-green); margin: 0; font-size: 0.9rem;">PHASE 2: VERIFICATION</h2>
+        <p style="color: #444; font-size: 0.55rem; margin-bottom: 15px;">STATUS: PROOF OF EFFORT REQUIRED</p>
         
-        <input type="text" id="citySearch" placeholder="SCAN TARGET...">
+        <input type="text" id="citySearch" placeholder="SCAN REGION...">
         <button onclick="scanRegion()">ENGAGE SENSORS</button>
-        
-        <button id="alertBtn" class="btn-alert" onclick="broadcastAlert()">BROADCAST EMERGENCY</button>
+
+        <div id="camera-zone">
+            <p style="font-size: 0.7rem; color: var(--accent-green);">[!] UPLOAD PROOF OF PATCH</p>
+            <video id="video" autoplay playsinline></video>
+            <button onclick="takeSnapshot()" style="background: white; color: black; margin-top:10px;">CAPTURE EVIDENCE</button>
+            <canvas id="canvas" style="display:none;"></canvas>
+            <img id="snapshot" src="" alt="Proof">
+            <button id="uploadBtn" onclick="verifyPatch()" style="display:none; background: var(--accent-green);">UPLOAD TO LEDGER</button>
+        </div>
 
         <div id="command-log">
-            <div style="color: var(--accent-green)">[SYSTEM] EmailJS Handshake... OK</div>
+            <div>[SYSTEM] Waiting for local anomaly...</div>
         </div>
     </div>
 
@@ -47,20 +57,8 @@
     </div>
 </div>
 
-<div id="ticker-container">
-    <div class="ticker-text">
-        [31-03-2026] Digital Census Live | AP LWE Zero Status Confirmed | "Karmanye vadhikaraste ma phaleshu kadachana"
-    </div>
-</div>
-
 <script>
-    // INITIALIZE EMAILJS
-    (function() {
-        emailjs.init("YOUR_PUBLIC_KEY"); // <--- REPLACE WITH YOUR PUBLIC KEY
-    })();
-
-    let currentCity = "";
-    let currentTemp = "";
+    let videoStream = null;
 
     function addLog(msg) {
         const entry = document.createElement('div');
@@ -75,46 +73,53 @@
         try {
             const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&format=json`);
             const geoData = await geo.json();
-            const { latitude, longitude, name } = geoData.results[0];
+            const { name } = geoData.results[0];
 
-            const weather = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
-            const weatherData = await weather.json();
-            
-            currentCity = name;
-            currentTemp = Math.round(weatherData.current_weather.temperature);
-            
-            document.getElementById('temp-val').innerText = currentTemp + "°";
+            // For testing: We simulate an anomaly in ANY city you type
+            document.getElementById('temp-val').innerText = "42°";
             document.getElementById('location-tag').innerText = name.toUpperCase();
             
-            // Logic: Show Alert Button if Temp > 38°C
-            if(currentTemp >= 38) {
-                document.getElementById('alertBtn').style.display = "block";
-                addLog(`CRITICAL ANOMALY: ${name} is overheating!`, true);
-            } else {
-                document.getElementById('alertBtn').style.display = "none";
-                addLog(`Status: ${name} is within safe parameters.`);
-            }
-
+            addLog(`CRITICAL: Anomaly detected in ${name}.`);
+            startCamera();
         } catch (e) { addLog("Sensor Sync Error."); }
     }
 
-    async function broadcastAlert() {
-        addLog("Initiating Global Broadcast...");
-        
-        const templateParams = {
-            city_name: currentCity,
-            temp: currentTemp
-        };
+    async function startCamera() {
+        document.getElementById('camera-zone').style.display = 'block';
+        try {
+            videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            document.getElementById('video').srcObject = videoStream;
+            addLog("Camera Link: Online. Capture the solution.");
+        } catch (err) {
+            addLog("Camera Access Denied.");
+            alert("Please allow camera access for verification.");
+        }
+    }
 
-        emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
-            .then(function() {
-                addLog("BROADCAST SUCCESSFUL: Architect notified.");
-                alert("Emergency Alert Sent via Satellite Uplink.");
-                document.getElementById('alertBtn').style.display = "none";
-            }, function(error) {
-                addLog("BROADCAST FAILED: Check console.");
-                console.log('FAILED...', error);
-            });
+    function takeSnapshot() {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        const snapshot = document.getElementById('snapshot');
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const data = canvas.toDataURL('image/png');
+        snapshot.src = data;
+        snapshot.style.display = 'block';
+        video.style.display = 'none';
+        document.getElementById('uploadBtn').style.display = 'block';
+        addLog("Evidence captured. Review before upload.");
+    }
+
+    function verifyPatch() {
+        addLog("Uploading proof to Global Ledger...");
+        setTimeout(() => {
+            alert("VERIFICATION SUCCESSFUL: Your contribution has been recorded. 100 APL Credits granted.");
+            location.reload(); // Reset for next mission
+        }, 2000);
     }
 </script>
 </body>
