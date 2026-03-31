@@ -3,36 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>APL | Satellite Sentinel v1.6</title>
+    <title>APL | Mission Control v1.7</title>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         :root { --bg: #050505; --accent-red: #ff3333; --accent-green: #00ffa3; --text: #f0f0f0; --panel: #111111; }
         body { background: var(--bg); color: var(--text); font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; height: 100vh; overflow: hidden; flex-direction: column; }
-        
         #main-container { display: flex; flex-grow: 1; overflow: hidden; }
-        
-        /* Sidebar & Log */
         #sidebar { width: 380px; background: var(--panel); border-right: 1px solid #222; padding: 25px; box-sizing: border-box; display: flex; flex-direction: column; }
         #command-log { flex-grow: 1; margin-top: 15px; background: #000; border: 1px solid #222; padding: 10px; font-size: 0.65rem; overflow-y: auto; color: #555; }
-        
         input { width: 100%; padding: 10px; background: #000; border: 1px solid #333; color: var(--accent-green); margin-bottom: 5px; }
-        button { width: 100%; padding: 10px; background: var(--accent-green); border: none; font-weight: bold; cursor: pointer; }
-
-        /* SATELLITE MAP AREA */
-        #map-area { flex-grow: 1; position: relative; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: center; }
-        
-        /* Live NASA Satellite Layer */
-        #satellite-view { 
-            position: absolute; width: 100%; height: 100%; 
-            background-image: url('https://gibs.earthdata.nasa.gov/wmts/epsg4326/best/BlueMarble_ShadedRelief_Bathymetry/default/2026-03-31/2km/0/0/0.jpg');
-            background-size: cover; background-position: center; opacity: 0.4; filter: grayscale(100%) brightness(0.5);
-        }
-
-        .globe-ui { width: 320px; height: 320px; border-radius: 50%; border: 1px solid rgba(0, 255, 163, 0.3); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); }
-        #temp-val { font-size: 4.5rem; font-weight: bold; margin: 0; }
-        
-        /* TICKER (Updated for today) */
+        button { width: 100%; padding: 10px; background: var(--accent-green); border: none; font-weight: bold; cursor: pointer; margin-bottom: 5px; }
+        .btn-alert { background: var(--accent-red); color: white; display: none; } /* Hidden by default */
+        #map-area { flex-grow: 1; position: relative; background: #000; display: flex; justify-content: center; align-items: center; }
+        .globe-ui { width: 320px; height: 320px; border-radius: 50%; border: 1px solid rgba(0, 255, 163, 0.3); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5; background: rgba(0,0,0,0.8); }
+        #temp-val { font-size: 4.5rem; font-weight: bold; }
         #ticker-container { width: 100%; background: #000; border-top: 1px solid var(--accent-green); height: 40px; display: flex; align-items: center; overflow: hidden; }
-        .ticker-label { background: var(--accent-green); color: #000; padding: 0 15px; font-weight: bold; height: 100%; display: flex; align-items: center; font-size: 0.8rem; }
         .ticker-text { display: inline-block; padding-left: 100%; animation: ticker-move 70s linear infinite; font-size: 0.85rem; color: var(--accent-green); white-space: nowrap; }
         @keyframes ticker-move { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
     </style>
@@ -41,20 +26,21 @@
 
 <div id="main-container">
     <div id="sidebar">
-        <h2 style="color: var(--accent-green); margin: 0; font-size: 0.9rem;">SATELLITE LINK: ESTABLISHED</h2>
-        <p style="color: #444; font-size: 0.55rem; margin-bottom: 15px;">SOURCE: NASA GIBS / SENTINEL-2</p>
+        <h2 style="color: var(--accent-green); margin: 0; font-size: 0.9rem;">MISSION CONTROL ACTIVE</h2>
+        <p style="color: #444; font-size: 0.55rem; margin-bottom: 15px;">UPLINK STATUS: ENCRYPTED</p>
         
-        <input type="text" id="citySearch" placeholder="LOCATE TARGET...">
+        <input type="text" id="citySearch" placeholder="SCAN TARGET...">
         <button onclick="scanRegion()">ENGAGE SENSORS</button>
+        
+        <button id="alertBtn" class="btn-alert" onclick="broadcastAlert()">BROADCAST EMERGENCY</button>
 
         <div id="command-log">
-            <div style="color: var(--accent-green)">[SYSTEM] Handshake with NASA Earthdata... OK</div>
-            <div>[INFO] Loading 30m resolution harmonized tiles...</div>
+            <div style="color: var(--accent-green)">[SYSTEM] EmailJS Handshake... OK</div>
         </div>
     </div>
 
     <div id="map-area">
-        <div id="satellite-view"></div> <div class="globe-ui">
+        <div class="globe-ui">
             <div id="temp-val">--</div>
             <div id="location-tag" style="color: var(--accent-green); font-size: 0.7rem; letter-spacing: 2px;">READY</div>
         </div>
@@ -62,13 +48,20 @@
 </div>
 
 <div id="ticker-container">
-    <div class="ticker-label">LIVE DATA</div>
     <div class="ticker-text">
-        [31-03-2026] Digital Census Phase 1 starts in India | 10% observation loss reported on Sentinel-2 ground station (Resolved) | AP Government launches QR-coded transparency for rice exports | Heatwave warning in Rayalaseema: 42°C expected | "Karmanye vadhikaraste ma phaleshu kadachana"
+        [31-03-2026] Digital Census Live | AP LWE Zero Status Confirmed | "Karmanye vadhikaraste ma phaleshu kadachana"
     </div>
 </div>
 
 <script>
+    // INITIALIZE EMAILJS
+    (function() {
+        emailjs.init("YOUR_PUBLIC_KEY"); // <--- REPLACE WITH YOUR PUBLIC KEY
+    })();
+
+    let currentCity = "";
+    let currentTemp = "";
+
     function addLog(msg) {
         const entry = document.createElement('div');
         entry.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
@@ -78,7 +71,6 @@
     async function scanRegion() {
         const city = document.getElementById('citySearch').value;
         if (!city) return;
-        addLog(`Requesting telemetry for ${city}...`);
         
         try {
             const geo = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${city}&count=1&format=json`);
@@ -88,16 +80,41 @@
             const weather = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`);
             const weatherData = await weather.json();
             
-            document.getElementById('temp-val').innerText = Math.round(weatherData.current_weather.temperature) + "°";
+            currentCity = name;
+            currentTemp = Math.round(weatherData.current_weather.temperature);
+            
+            document.getElementById('temp-val').innerText = currentTemp + "°";
             document.getElementById('location-tag').innerText = name.toUpperCase();
             
-            addLog(`Vitals received: ${name} is stable.`);
-            
-            // Simulating satellite "Zoom" effect
-            document.getElementById('satellite-view').style.filter = "grayscale(0%) brightness(0.8)";
-            setTimeout(() => { document.getElementById('satellite-view').style.filter = "grayscale(100%) brightness(0.5)"; }, 2000);
+            // Logic: Show Alert Button if Temp > 38°C
+            if(currentTemp >= 38) {
+                document.getElementById('alertBtn').style.display = "block";
+                addLog(`CRITICAL ANOMALY: ${name} is overheating!`, true);
+            } else {
+                document.getElementById('alertBtn').style.display = "none";
+                addLog(`Status: ${name} is within safe parameters.`);
+            }
 
-        } catch (e) { addLog("Uplink failed. Retrying..."); }
+        } catch (e) { addLog("Sensor Sync Error."); }
+    }
+
+    async function broadcastAlert() {
+        addLog("Initiating Global Broadcast...");
+        
+        const templateParams = {
+            city_name: currentCity,
+            temp: currentTemp
+        };
+
+        emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
+            .then(function() {
+                addLog("BROADCAST SUCCESSFUL: Architect notified.");
+                alert("Emergency Alert Sent via Satellite Uplink.");
+                document.getElementById('alertBtn').style.display = "none";
+            }, function(error) {
+                addLog("BROADCAST FAILED: Check console.");
+                console.log('FAILED...', error);
+            });
     }
 </script>
 </body>
