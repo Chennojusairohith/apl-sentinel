@@ -1,40 +1,55 @@
-// --- Replace your takeSnapshot() function with this advanced version ---
+// --- ADD THIS AT THE TOP OF YOUR <script> SECTION ---
 
-function takeSnapshot() {
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const context = canvas.getContext('2d');
-    const snapshot = document.getElementById('snapshot');
+// Initialize Wallet from LocalStorage or set to 0
+let aplCredits = parseInt(localStorage.getItem('apl_credits')) || 0;
+let satelliteLevel = parseInt(localStorage.getItem('sat_level')) || 1;
 
-    // 1. Set canvas size to match the video feed
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    // 2. Draw the live camera frame onto the canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // 3. APPLY THE VEDIC WATERMARK
-    context.fillStyle = "rgba(0, 255, 163, 0.7)"; // Transparent APL Green
-    context.font = "bold 20px 'Courier New'";
+function updateWalletUI() {
+    document.getElementById('wallet-display').innerText = `CREDITS: ${aplCredits} APL`;
+    document.getElementById('sat-level-display').innerText = `SAT-RES: ${satelliteLevel}.0x`;
     
-    // Draw the Sanskrit Quote
-    const quote = "Karmanye vadhikaraste ma phaleshu kadachana";
-    const timestamp = new Date().toLocaleString();
-    const location = "LOCATION: VIJAYAWADA NODE";
-
-    // Position the text at the bottom-left
-    context.fillText(quote, 20, canvas.height - 60);
-    context.font = "14px 'Courier New'";
-    context.fillText(location, 20, canvas.height - 40);
-    context.fillText(timestamp, 20, canvas.height - 20);
-
-    // 4. Create the final image
-    const data = canvas.toDataURL('image/png');
-    snapshot.src = data;
-    snapshot.style.display = 'block';
-    
-    // UI Cleanup
-    video.style.display = 'none';
-    document.getElementById('uploadBtn').style.display = 'block';
-    addLog("VEDIC WATERMARK APPLIED. Proof is ready for Ledger.");
+    // Save to browser memory
+    localStorage.setItem('apl_credits', aplCredits);
+    localStorage.setItem('sat_level', satelliteLevel);
 }
+
+// --- UPDATE YOUR verifyPatch() FUNCTION ---
+
+function verifyPatch() {
+    addLog("Uploading proof to Global Ledger...");
+    
+    setTimeout(() => {
+        aplCredits += 100; // Reward for verification
+        updateWalletUI();
+        
+        addLog("VERIFICATION SUCCESSFUL: +100 APL Credits.");
+        alert("Mission Complete. 100 Credits added to your APL Ledger.");
+        
+        // Reset the camera UI for next mission
+        document.getElementById('camera-zone').style.display = 'none';
+        document.getElementById('snapshot').style.display = 'none';
+        document.getElementById('video').style.display = 'block';
+    }, 2000);
+}
+
+// --- ADD THE UPGRADE FUNCTION ---
+
+function upgradeSatellite() {
+    const cost = 250;
+    if (aplCredits >= cost) {
+        aplCredits -= cost;
+        satelliteLevel += 1;
+        updateWalletUI();
+        addLog(`UPLINK UPGRADED: Resolution now at ${satelliteLevel}.0x`);
+        
+        // Visual effect: Make the satellite map clearer
+        const satView = document.getElementById('satellite-view');
+        satView.style.opacity = 0.4 + (satelliteLevel * 0.1);
+        satView.style.filter = `grayscale(${100 - (satelliteLevel * 10)}%) brightness(0.6)`;
+    } else {
+        alert(`Insufficient Credits. You need ${cost - aplCredits} more APL.`);
+    }
+}
+
+// Initialize UI on load
+window.onload = updateWalletUI;
